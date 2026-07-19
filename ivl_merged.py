@@ -1,16 +1,18 @@
-from random import *
 import math
-from collections import OrderedDict
 import argparse
 import time
+import numpy as np
+from numba import jit, njit, prange
+
+FACTORIALS = [1, 1, 2, 6, 24, 120]
 
 teams = ("act", "dou5", "fpx.zq", "gg", "gr", "mrc", "te", "wbg", "wolves", "gw")
 
 parser = argparse.ArgumentParser(description='IVL联赛排名预测分析')
 parser.add_argument('--no-input', action='store_true', help='跳过交互式输入，使用默认值')
 parser.add_argument('--data', default='stats.txt', help='stats数据文件路径')
-parser.add_argument('--sim', type=int, default=100000, choices=[100000, 1000000],
-                    help='模拟次数: 100000(10万) 或 1000000(100万)，默认10万')
+parser.add_argument('--sim', type=int, default=100000, choices=[100000, 1000000, 10000000],
+                    help='模拟次数: 100000(10万)、1000000(100万) 或 10000000(1000万)，默认10万')
 args = parser.parse_args()
 
 
@@ -142,19 +144,22 @@ def get_prob(mA, mB):
     def p_pois(m, k):
         if m == 0:
             return 1.0 if k == 0 else 0.0
-        return m ** k * math.exp(-m) / math.factorial(k)
+        return m ** k * math.exp(-m) / FACTORIALS[k]
 
-    raw = []
+    raw = [0.0] * 5
     s_raw = 0.0
-    for pA, pB in scores:
+    for i, (pA, pB) in enumerate(scores):
         p = p_pois(mA, pA) * p_pois(mB, pB)
-        raw.append(p)
+        raw[i] = p
         s_raw += p
 
-    res = []
-    for i, (pA, pB) in enumerate(scores):
-        res.append(raw[i] / s_raw if s_raw > 0 else 1 / len(scores))
-    return res
+    if s_raw > 0:
+        for i in range(5):
+            raw[i] /= s_raw
+    else:
+        for i in range(5):
+            raw[i] = 0.2
+    return raw
 
 
 def sim_round(p1, p2):
@@ -244,94 +249,118 @@ def sim_bo3(statA, statB):
     return res
 
 
-def ran_sel(res):
-    r = random()
-    for i in range(2):
-        for j in range(5):
-            for k in range(7):
-                r -= res[i][j][k]
-                if r < 0:
-                    return i, j, k
+@njit
+def ran_sel(res_flat):
+    r = np.random.random()
+    for idx in range(len(res_flat)):
+        r -= res_flat[idx]
+        if r < 0:
+            i = idx // 35
+            j = (idx % 35) // 7
+            k = idx % 7
+            return i, j, k
+    return 0, 0, 0
 
 
 team_index = {t: i for i, t in enumerate(teams)}
 
-resall = [[-1] * 10 for _ in range(10)]
+resall = np.zeros((10, 10, 70), dtype=np.float64)
 
 for t1, t2 in remaining_matches:
     i = team_index[t1]
     j = team_index[t2]
     if i < j:
-        resall[i][j] = sim_bo3(stats[t1], stats[t2])
+        res = sim_bo3(stats[t1], stats[t2])
+        idx = 0
+        for ii in range(2):
+            for jj in range(5):
+                for kk in range(7):
+                    resall[i, j, idx] = res[ii][jj][kk]
+                    idx += 1
     else:
-        resall[j][i] = sim_bo3(stats[t2], stats[t1])
+        res = sim_bo3(stats[t2], stats[t1])
+        idx = 0
+        for ii in range(2):
+            for jj in range(5):
+                for kk in range(7):
+                    resall[j, i, idx] = res[ii][jj][kk]
+                    idx += 1
+
+matches_array = np.zeros((len(remaining_matches), 2), dtype=np.int32)
+for idx, (t1, t2) in enumerate(remaining_matches):
+    matches_array[idx, 0] = team_index[t1]
+    matches_array[idx, 1] = team_index[t2]
+
+now_score_array = np.zeros((10, 4), dtype=np.int32)
+for i, t in enumerate(teams):
+    now_score_array[i] = now_score[t]
 
 
-def one_test():
-    new_score = {k: v[:] for k, v in now_score.items()}
-    for t1, t2 in remaining_matches:
-        i = team_index[t1]
-        j = team_index[t2]
+@njit
+def one_test_numba(resall_arr, matches_arr, now_score_arr):
+    new_score = np.copy(now_score_arr)
+    n_matches = matches_arr.shape[0]
+    
+    for m in range(n_matches):
+        i = matches_arr[m, 0]
+        j = matches_arr[m, 1]
+        
         if i < j:
-            res = resall[i][j]
+            res = resall_arr[i, j]
         else:
-            res = resall[j][i]
+            res = resall_arr[j, i]
         
         winner, nw, dc = ran_sel(res)
         nw -= 2
         dc -= 3
         
-        a, b, c, d = new_score[t1]
-        e, f, g, h = new_score[t2]
-        
         if winner == 1:
-            a += 1
-            f += 1
+            new_score[i, 0] += 1
+            new_score[j, 1] += 1
         else:
-            b += 1
-            e += 1
-        c += nw
-        g -= nw
-        d += dc
-        h -= dc
-        
-        new_score[t1] = a, b, c, d
-        new_score[t2] = e, f, g, h
-
-    sorted_score = OrderedDict(
-        sorted(
-            new_score.items(),
-            key=lambda x: (-x[1][0], -x[1][2], -x[1][3])
-        ))
-    return sorted_score
+            new_score[i, 1] += 1
+            new_score[j, 0] += 1
+        new_score[i, 2] += nw
+        new_score[j, 2] -= nw
+        new_score[i, 3] += dc
+        new_score[j, 3] -= dc
+    
+    keys = np.zeros(10, dtype=np.float64)
+    for i in range(10):
+        keys[i] = -new_score[i, 0] * 10000 - new_score[i, 2] * 100 - new_score[i, 3]
+    
+    ranked = np.argsort(keys)
+    return ranked, new_score
 
 
 SIMULATION_COUNT = args.sim
-SIM_LABEL = "100k" if SIMULATION_COUNT == 100000 else "1M"
+if SIMULATION_COUNT == 100000:
+    SIM_LABEL = "100k"
+elif SIMULATION_COUNT == 1000000:
+    SIM_LABEL = "1M"
+else:
+    SIM_LABEL = "10M"
 
 print("----Stage 1----")
 print(f"模拟次数: {SIMULATION_COUNT:,} ({SIM_LABEL})")
 start_time = time.time()
-all_res = [[0] * 10 for _ in range(10)]
+all_res = np.zeros((10, 10), dtype=np.int64)
 winner_line_sum = 0.0
 playoff_a_line_sum = 0.0
 playoff_b_line_sum = 0.0
 
 for _ in range(SIMULATION_COUNT):
-    sorted_score = one_test()
-    sorted_teams = list(sorted_score.keys())
-    sorted_scores = list(sorted_score.values())
+    ranked, new_score = one_test_numba(resall, matches_array, now_score_array)
     
-    for i, t in enumerate(teams):
-        pos = sorted_teams.index(t)
-        all_res[i][pos] += 1
+    for pos in range(10):
+        all_res[ranked[pos], pos] += 1
     
-    rank4_score = sorted_scores[3][0]
-    rank5_score = sorted_scores[4][0]
-    rank6_score = sorted_scores[5][0]
-    rank7_score = sorted_scores[6][0]
-    rank8_score = sorted_scores[7][0]
-    rank9_score = sorted_scores[8][0]
+    rank4_score = new_score[ranked[3]][0]
+    rank5_score = new_score[ranked[4]][0]
+    rank6_score = new_score[ranked[5]][0]
+    rank7_score = new_score[ranked[6]][0]
+    rank8_score = new_score[ranked[7]][0]
+    rank9_score = new_score[ranked[8]][0]
     
     winner_line_sum += (rank4_score + rank5_score) / 2
     playoff_a_line_sum += (rank6_score + rank7_score) / 2
@@ -349,9 +378,13 @@ print("----Stage 2----")
 
 def format_prob(count):
     prob = count / SIMULATION_COUNT * 100
-    if prob < 0.01:
-        return f"{count}次/{SIM_LABEL}"
-    return f"{prob:.2f}%"
+    if prob >= 0.01:
+        return f"{prob:.2f}%"
+    if SIMULATION_COUNT >= 10000000 and prob >= 0.0001:
+        sig_fig = int(math.floor(math.log10(prob)))
+        decimals = -sig_fig
+        return f"{prob:.{decimals}f}%"
+    return f"{count}次/{SIM_LABEL}"
 
 
 def generate_html_report(all_res, teams, winner_line, playoff_a_line, playoff_b_line):
@@ -792,7 +825,7 @@ def generate_html_report(all_res, teams, winner_line, playoff_a_line, playoff_b_
                 </div>"""
     
     for t, i, avg_rank in team_data:
-        most_likely_rank = all_res[i].index(max(all_res[i])) + 1
+        most_likely_rank = np.argmax(all_res[i]) + 1
         current_wins = now_score[t][0]
         
         html_content += f"""
