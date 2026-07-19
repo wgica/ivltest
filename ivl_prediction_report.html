@@ -1,0 +1,2282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IVL联赛排名预测分析</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 30px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        h2 {
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+            table-layout: fixed;
+        }
+        th, td {
+            padding: 10px 6px;
+            text-align: center;
+            width: auto;
+            border: 4px solid white;
+        }
+        th {
+            color: white;
+            font-weight: 700;
+            font-size: 1.1em;
+            position: sticky;
+            top: 0;
+            padding: 14px 6px;
+            z-index: 10;
+        }
+        td {
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        table.group-table th, table.group-table td {
+            width: 16.67%;
+        }
+        table.group-table th:first-child {
+            width: 12%;
+            background: #333;
+            border-radius: 6px;
+        }
+        table.group-table th:nth-child(2) {
+            background: linear-gradient(135deg, #4CAF50, #66BB6A);
+            border-radius: 6px;
+        }
+        table.group-table th:nth-child(3) {
+            background: linear-gradient(135deg, #FF9800, #FFA726);
+            border-radius: 6px;
+        }
+        table.group-table th:nth-child(4) {
+            background: linear-gradient(135deg, #2196F3, #42A5F5);
+            border-radius: 6px;
+        }
+        table.group-table th:nth-child(5) {
+            background: linear-gradient(135deg, #F44336, #EF5350);
+            border-radius: 6px;
+        }
+        table.group-table th:last-child {
+            width: 12%;
+            background: #333;
+            border-radius: 6px;
+        }
+        table.rank-table th, table.rank-table td {
+            width: 9.09%;
+        }
+        table.rank-table th:first-child {
+            width: 12%;
+            background: #333;
+            color: white;
+            border-radius: 6px;
+        }
+        table.rank-table th:not(:first-child) {
+            background: #f8f9fa;
+            color: #333;
+            border-radius: 6px;
+        }
+        table.rank-table tbody tr:nth-child(1) td:first-child {
+            background: linear-gradient(90deg, #FFD700, #FFA500);
+            color: #333;
+        }
+        table.rank-table tbody tr:nth-child(2) td:first-child {
+            background: linear-gradient(90deg, #C0C0C0, #A8A8A8);
+            color: #333;
+        }
+        table.rank-table tbody tr:nth-child(3) td:first-child {
+            background: linear-gradient(90deg, #CD7F32, #DAA520);
+            color: #333;
+        }
+        table.rank-table tbody tr:nth-child(4) td:first-child {
+            background: linear-gradient(90deg, #90EE90, #98FB98);
+            color: #333;
+        }
+        table.rank-table tbody tr:nth-child(5) td:first-child,
+        table.rank-table tbody tr:nth-child(6) td:first-child {
+            background: linear-gradient(90deg, #87CEEB, #B0E0E6);
+            color: #333;
+        }
+        table.rank-table tbody tr:nth-child(7) td:first-child,
+        table.rank-table tbody tr:nth-child(8) td:first-child {
+            background: linear-gradient(90deg, #DDA0DD, #EE82EE);
+            color: #333;
+        }
+        table.rank-table tbody tr:nth-child(9) td:first-child,
+        table.rank-table tbody tr:nth-child(10) td:first-child {
+            background: linear-gradient(90deg, #F08080, #FA8072);
+            color: #333;
+        }
+        tr:hover {
+            background-color: #f5f7fa;
+        }
+        .bar-container {
+            position: relative;
+            height: 48px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        .bar {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+        .bar-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #333;
+            font-weight: 800;
+            font-size: 1.5em;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.9);
+            white-space: nowrap;
+        }
+        .rank-bar {
+            height: 16px;
+            border-radius: 8px;
+            margin: 2px 0;
+        }
+        .group-winner { background: linear-gradient(90deg, #4CAF50, #8BC34A); }
+        .group-a { background: linear-gradient(90deg, #FF9800, #FFB74D); }
+        .group-b { background: linear-gradient(90deg, #2196F3, #64B5F6); }
+        .group-eliminate { background: linear-gradient(90deg, #F44336, #EF9A9A); }
+        .rank-1 { background: linear-gradient(90deg, #FFD700, #FFA500); }
+        .rank-2 { background: linear-gradient(90deg, #C0C0C0, #A8A8A8); }
+        .rank-3 { background: linear-gradient(90deg, #CD7F32, #DAA520); }
+        .rank-4 { background: linear-gradient(90deg, #90EE90, #98FB98); }
+        .rank-5-6 { background: linear-gradient(90deg, #87CEEB, #B0E0E6); }
+        .rank-7-8 { background: linear-gradient(90deg, #DDA0DD, #EE82EE); }
+        .rank-9-10 { background: linear-gradient(90deg, #F08080, #FA8072); }
+        .bar-gold { background: linear-gradient(90deg, #FFD700, #FFA500); }
+        .bar-silver { background: linear-gradient(90deg, #C0C0C0, #A8A8A8); }
+        .bar-bronze { background: linear-gradient(90deg, #CD7F32, #DAA520); }
+        .bar-green { background: linear-gradient(90deg, #90EE90, #98FB98); }
+        .bar-sky { background: linear-gradient(90deg, #87CEEB, #B0E0E6); }
+        .bar-purple { background: linear-gradient(90deg, #DDA0DD, #EE82EE); }
+        .bar-red { background: linear-gradient(90deg, #F08080, #FA8072); }
+        .team-name {
+            font-weight: 700;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .avg-rank {
+            font-weight: 700;
+            font-size: 1.2em;
+            color: #667eea;
+        }
+        .high-prob {
+            color: #4CAF50;
+            font-weight: 700;
+        }
+        .low-prob {
+            color: #F44336;
+            font-weight: 700;
+        }
+        .prob-value {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            font-weight: 600;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .summary-card {
+            background: #f8f9fa;
+            color: #333;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+        .summary-card h3 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #666;
+        }
+        .summary-card .value {
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏆 IVL联赛排名预测分析</h1>
+        <div class="subtitle">基于蒙特卡洛模拟的100000次预测结果</div>
+        
+        <div class="card">
+            <div class="legend">
+                <div class="legend-item"><div class="legend-color group-winner"></div><span>胜者组</span></div>
+                <div class="legend-item"><div class="legend-color group-a"></div><span>附加组A</span></div>
+                <div class="legend-item"><div class="legend-color group-b"></div><span>附加组B</span></div>
+                <div class="legend-item"><div class="legend-color group-eliminate"></div><span>淘汰</span></div>
+            </div>
+            <h2>📊 分组概率统计</h2>
+            <table class="group-table">
+                <thead>
+                    <tr>
+                        <th>队伍</th>
+                        <th>胜者组<br></th>
+                        <th>附加组A<br></th>
+                        <th>附加组B<br></th>
+                        <th>淘汰<br></th>
+                        <th>平均位次</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="team-name">GR</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-winner" style="width:99.13300000000001%"></div>
+                                <div class="bar-text prob-value">99.13%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-a" style="width:0.8670000000000001%"></div>
+                                <div class="bar-text prob-value">0.87%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-b" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-eliminate" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td class="avg-rank">1.45</td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">FPX.ZQ</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-winner" style="width:94.2399%"></div>
+                                <div class="bar-text prob-value">94.24%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-a" style="width:5.7007%"></div>
+                                <div class="bar-text prob-value">5.70%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-b" style="width:0.0594%"></div>
+                                <div class="bar-text prob-value">0.06%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-eliminate" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td class="avg-rank">2.38</td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">WBG</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-winner" style="width:78.8429%"></div>
+                                <div class="bar-text prob-value">78.84%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-a" style="width:19.788700000000002%"></div>
+                                <div class="bar-text prob-value">19.79%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-b" style="width:1.3478999999999999%"></div>
+                                <div class="bar-text prob-value">1.35%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-eliminate" style="width:0.0205%"></div>
+                                <div class="bar-text prob-value">0.02%</div>
+                            </div>
+                        </td>
+                        <td class="avg-rank">3.39</td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">MRC</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-winner" style="width:60.3862%"></div>
+                                <div class="bar-text prob-value">60.39%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-a" style="width:36.4539%"></div>
+                                <div class="bar-text prob-value">36.45%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-b" style="width:3.1527%"></div>
+                                <div class="bar-text prob-value">3.15%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-eliminate" style="width:0.0072%"></div>
+                                <div class="bar-text prob-value">72次/1M</div>
+                            </div>
+                        </td>
+                        <td class="avg-rank">4.11</td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">GG</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-winner" style="width:55.7511%"></div>
+                                <div class="bar-text prob-value">55.75%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-a" style="width:40.6627%"></div>
+                                <div class="bar-text prob-value">40.66%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-b" style="width:3.5673000000000004%"></div>
+                                <div class="bar-text prob-value">3.57%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-eliminate" style="width:0.0189%"></div>
+                                <div class="bar-text prob-value">0.02%</div>
+                            </div>
+                        </td>
+                        <td class="avg-rank">4.26</td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">WOLVES</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-winner" style="width:6.500100000000001%"></div>
+                                <div class="bar-text prob-value">6.50%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-a" style="width:41.731899999999996%"></div>
+                                <div class="bar-text prob-value">41.73%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-b" style="width:41.2022%"></div>
+                                <div class="bar-text prob-value">41.20%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-eliminate" style="width:10.5658%"></div>
+                                <div class="bar-text prob-value">10.57%</div>
+                            </div>
+                        </td>
+                        <td class="avg-rank">6.65</td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">ACT</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-winner" style="width:3.3352%"></div>
+                                <div class="bar-text prob-value">3.34%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-a" style="width:27.618%"></div>
+                                <div class="bar-text prob-value">27.62%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-b" style="width:45.3908%"></div>
+                                <div class="bar-text prob-value">45.39%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-eliminate" style="width:23.656%"></div>
+                                <div class="bar-text prob-value">23.66%</div>
+                            </div>
+                        </td>
+                        <td class="avg-rank">7.32</td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">DOU5</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-winner" style="width:1.3858000000000001%"></div>
+                                <div class="bar-text prob-value">1.39%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-a" style="width:15.7779%"></div>
+                                <div class="bar-text prob-value">15.78%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-b" style="width:41.9367%"></div>
+                                <div class="bar-text prob-value">41.94%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-eliminate" style="width:40.8996%"></div>
+                                <div class="bar-text prob-value">40.90%</div>
+                            </div>
+                        </td>
+                        <td class="avg-rank">7.99</td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">GW</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-winner" style="width:0.42310000000000003%"></div>
+                                <div class="bar-text prob-value">0.42%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-a" style="width:8.6672%"></div>
+                                <div class="bar-text prob-value">8.67%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-b" style="width:36.765%"></div>
+                                <div class="bar-text prob-value">36.77%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-eliminate" style="width:54.1447%"></div>
+                                <div class="bar-text prob-value">54.14%</div>
+                            </div>
+                        </td>
+                        <td class="avg-rank">8.47</td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">TE</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-winner" style="width:0.0026999999999999997%"></div>
+                                <div class="bar-text prob-value">27次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-a" style="width:2.732%"></div>
+                                <div class="bar-text prob-value">2.73%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-b" style="width:26.578000000000003%"></div>
+                                <div class="bar-text prob-value">26.58%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar group-eliminate" style="width:70.6873%"></div>
+                                <div class="bar-text prob-value">70.69%</div>
+                            </div>
+                        </td>
+                        <td class="avg-rank">8.98</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>📈 详细排名概率分布</h2>
+            <table class="rank-table">
+                <thead>
+                    <tr>
+                        <th>名次</th>
+                        <th>GR</th>
+                        <th>FPX.ZQ</th>
+                        <th>WBG</th>
+                        <th>MRC</th>
+                        <th>GG</th>
+                        <th>WOLVES</th>
+                        <th>ACT</th>
+                        <th>DOU5</th>
+                        <th>GW</th>
+                        <th>TE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="team-name">第1名</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-gold" style="width:69.8817%"></div>
+                                <div class="bar-text prob-value">69.88%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-gold" style="width:21.229799999999997%"></div>
+                                <div class="bar-text prob-value">21.23%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-gold" style="width:6.0019%"></div>
+                                <div class="bar-text prob-value">6.00%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-gold" style="width:1.6094000000000002%"></div>
+                                <div class="bar-text prob-value">1.61%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-gold" style="width:1.276%"></div>
+                                <div class="bar-text prob-value">1.28%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-gold" style="width:0.00019999999999999998%"></div>
+                                <div class="bar-text prob-value">2次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-gold" style="width:0.001%"></div>
+                                <div class="bar-text prob-value">10次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-gold" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-gold" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-gold" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">第2名</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-silver" style="width:19.2486%"></div>
+                                <div class="bar-text prob-value">19.25%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-silver" style="width:42.4271%"></div>
+                                <div class="bar-text prob-value">42.43%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-silver" style="width:20.269000000000002%"></div>
+                                <div class="bar-text prob-value">20.27%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-silver" style="width:9.518600000000001%"></div>
+                                <div class="bar-text prob-value">9.52%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-silver" style="width:8.2648%"></div>
+                                <div class="bar-text prob-value">8.26%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-silver" style="width:0.1637%"></div>
+                                <div class="bar-text prob-value">0.16%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-silver" style="width:0.0889%"></div>
+                                <div class="bar-text prob-value">0.09%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-silver" style="width:0.0176%"></div>
+                                <div class="bar-text prob-value">0.02%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-silver" style="width:0.0017%"></div>
+                                <div class="bar-text prob-value">17次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-silver" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">第3名</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-bronze" style="width:7.617699999999999%"></div>
+                                <div class="bar-text prob-value">7.62%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-bronze" style="width:20.5136%"></div>
+                                <div class="bar-text prob-value">20.51%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-bronze" style="width:31.3676%"></div>
+                                <div class="bar-text prob-value">31.37%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-bronze" style="width:21.202199999999998%"></div>
+                                <div class="bar-text prob-value">21.20%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-bronze" style="width:16.9743%"></div>
+                                <div class="bar-text prob-value">16.97%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-bronze" style="width:1.2667%"></div>
+                                <div class="bar-text prob-value">1.27%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-bronze" style="width:0.7596999999999999%"></div>
+                                <div class="bar-text prob-value">0.76%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-bronze" style="width:0.2532%"></div>
+                                <div class="bar-text prob-value">0.25%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-bronze" style="width:0.045%"></div>
+                                <div class="bar-text prob-value">0.04%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-bronze" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">第4名</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-green" style="width:2.385%"></div>
+                                <div class="bar-text prob-value">2.38%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-green" style="width:10.0694%"></div>
+                                <div class="bar-text prob-value">10.07%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-green" style="width:21.2044%"></div>
+                                <div class="bar-text prob-value">21.20%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-green" style="width:28.055999999999997%"></div>
+                                <div class="bar-text prob-value">28.06%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-green" style="width:29.236%"></div>
+                                <div class="bar-text prob-value">29.24%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-green" style="width:5.0695%"></div>
+                                <div class="bar-text prob-value">5.07%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-green" style="width:2.4856%"></div>
+                                <div class="bar-text prob-value">2.49%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-green" style="width:1.115%"></div>
+                                <div class="bar-text prob-value">1.11%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-green" style="width:0.3764%"></div>
+                                <div class="bar-text prob-value">0.38%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-green" style="width:0.0026999999999999997%"></div>
+                                <div class="bar-text prob-value">27次/1M</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">第5名</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:0.8415%"></div>
+                                <div class="bar-text prob-value">0.84%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:4.759%"></div>
+                                <div class="bar-text prob-value">4.76%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:15.3895%"></div>
+                                <div class="bar-text prob-value">15.39%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:26.805600000000002%"></div>
+                                <div class="bar-text prob-value">26.81%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:29.1445%"></div>
+                                <div class="bar-text prob-value">29.14%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:11.5677%"></div>
+                                <div class="bar-text prob-value">11.57%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:6.4792000000000005%"></div>
+                                <div class="bar-text prob-value">6.48%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:3.4653000000000005%"></div>
+                                <div class="bar-text prob-value">3.47%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:1.4168%"></div>
+                                <div class="bar-text prob-value">1.42%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:0.13090000000000002%"></div>
+                                <div class="bar-text prob-value">0.13%</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">第6名</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:0.025500000000000002%"></div>
+                                <div class="bar-text prob-value">0.03%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:0.9417%"></div>
+                                <div class="bar-text prob-value">0.94%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:4.3992%"></div>
+                                <div class="bar-text prob-value">4.40%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:9.6483%"></div>
+                                <div class="bar-text prob-value">9.65%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:11.5182%"></div>
+                                <div class="bar-text prob-value">11.52%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:30.1642%"></div>
+                                <div class="bar-text prob-value">30.16%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:21.1388%"></div>
+                                <div class="bar-text prob-value">21.14%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:12.3126%"></div>
+                                <div class="bar-text prob-value">12.31%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:7.2504%"></div>
+                                <div class="bar-text prob-value">7.25%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-sky" style="width:2.6010999999999997%"></div>
+                                <div class="bar-text prob-value">2.60%</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">第7名</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:0.0588%"></div>
+                                <div class="bar-text prob-value">0.06%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:1.1004999999999998%"></div>
+                                <div class="bar-text prob-value">1.10%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:2.7695000000000003%"></div>
+                                <div class="bar-text prob-value">2.77%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:3.0769%"></div>
+                                <div class="bar-text prob-value">3.08%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:25.1533%"></div>
+                                <div class="bar-text prob-value">25.15%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:24.5865%"></div>
+                                <div class="bar-text prob-value">24.59%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:19.3217%"></div>
+                                <div class="bar-text prob-value">19.32%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:14.854899999999999%"></div>
+                                <div class="bar-text prob-value">14.85%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:9.0779%"></div>
+                                <div class="bar-text prob-value">9.08%</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">第8名</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:0.0006000000000000001%"></div>
+                                <div class="bar-text prob-value">6次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:0.2474%"></div>
+                                <div class="bar-text prob-value">0.25%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:0.3832%"></div>
+                                <div class="bar-text prob-value">0.38%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:0.49040000000000006%"></div>
+                                <div class="bar-text prob-value">0.49%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:16.0489%"></div>
+                                <div class="bar-text prob-value">16.05%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:20.8043%"></div>
+                                <div class="bar-text prob-value">20.80%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:22.615%"></div>
+                                <div class="bar-text prob-value">22.61%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:21.9101%"></div>
+                                <div class="bar-text prob-value">21.91%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-purple" style="width:17.5001%"></div>
+                                <div class="bar-text prob-value">17.50%</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">第9名</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:0.0204%"></div>
+                                <div class="bar-text prob-value">0.02%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:0.0072%"></div>
+                                <div class="bar-text prob-value">72次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:0.0189%"></div>
+                                <div class="bar-text prob-value">0.02%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:8.1486%"></div>
+                                <div class="bar-text prob-value">8.15%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:14.8925%"></div>
+                                <div class="bar-text prob-value">14.89%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:22.2272%"></div>
+                                <div class="bar-text prob-value">22.23%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:26.1857%"></div>
+                                <div class="bar-text prob-value">26.19%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:28.4995%"></div>
+                                <div class="bar-text prob-value">28.50%</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="team-name">第10名</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:9.999999999999999e-05%"></div>
+                                <div class="bar-text prob-value">1次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:0.0%"></div>
+                                <div class="bar-text prob-value">0次/1M</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:2.4172%"></div>
+                                <div class="bar-text prob-value">2.42%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:8.7635%"></div>
+                                <div class="bar-text prob-value">8.76%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:18.6724%"></div>
+                                <div class="bar-text prob-value">18.67%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:27.959%"></div>
+                                <div class="bar-text prob-value">27.96%</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar bar-red" style="width:42.187799999999996%"></div>
+                                <div class="bar-text prob-value">42.19%</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>📋 排名概率条形图</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px;">
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">GR</h3>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第1名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">69.88%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-gold" style="width:69.8817%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第2名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">19.25%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-silver" style="width:19.2486%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第3名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">7.62%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-bronze" style="width:7.617699999999999%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第4名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">2.38%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-green" style="width:2.385%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第5名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.84%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:0.8415%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第6名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.03%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:0.025500000000000002%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第7名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第8名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第9名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第10名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">FPX.ZQ</h3>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第1名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">21.23%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-gold" style="width:21.229799999999997%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第2名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">42.43%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-silver" style="width:42.4271%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第3名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">20.51%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-bronze" style="width:20.5136%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第4名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">10.07%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-green" style="width:10.0694%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第5名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">4.76%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:4.759%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第6名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.94%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:0.9417%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第7名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.06%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:0.0588%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第8名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">6次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:0.0006000000000000001%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第9名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第10名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">WBG</h3>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第1名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">6.00%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-gold" style="width:6.0019%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第2名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">20.27%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-silver" style="width:20.269000000000002%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第3名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">31.37%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-bronze" style="width:31.3676%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第4名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">21.20%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-green" style="width:21.2044%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第5名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">15.39%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:15.3895%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第6名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">4.40%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:4.3992%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第7名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">1.10%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:1.1004999999999998%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第8名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.25%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:0.2474%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第9名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.02%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:0.0204%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第10名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">1次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:9.999999999999999e-05%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">MRC</h3>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第1名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">1.61%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-gold" style="width:1.6094000000000002%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第2名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">9.52%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-silver" style="width:9.518600000000001%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第3名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">21.20%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-bronze" style="width:21.202199999999998%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第4名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">28.06%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-green" style="width:28.055999999999997%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第5名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">26.81%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:26.805600000000002%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第6名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">9.65%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:9.6483%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第7名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">2.77%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:2.7695000000000003%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第8名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.38%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:0.3832%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第9名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">72次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:0.0072%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第10名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">GG</h3>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第1名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">1.28%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-gold" style="width:1.276%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第2名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">8.26%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-silver" style="width:8.2648%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第3名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">16.97%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-bronze" style="width:16.9743%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第4名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">29.24%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-green" style="width:29.236%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第5名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">29.14%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:29.1445%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第6名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">11.52%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:11.5182%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第7名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">3.08%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:3.0769%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第8名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.49%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:0.49040000000000006%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第9名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.02%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:0.0189%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第10名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">WOLVES</h3>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第1名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">2次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-gold" style="width:0.00019999999999999998%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第2名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.16%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-silver" style="width:0.1637%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第3名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">1.27%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-bronze" style="width:1.2667%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第4名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">5.07%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-green" style="width:5.0695%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第5名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">11.57%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:11.5677%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第6名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">30.16%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:30.1642%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第7名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">25.15%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:25.1533%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第8名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">16.05%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:16.0489%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第9名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">8.15%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:8.1486%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第10名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">2.42%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:2.4172%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">ACT</h3>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第1名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">10次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-gold" style="width:0.001%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第2名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.09%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-silver" style="width:0.0889%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第3名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.76%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-bronze" style="width:0.7596999999999999%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第4名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">2.49%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-green" style="width:2.4856%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第5名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">6.48%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:6.4792000000000005%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第6名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">21.14%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:21.1388%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第7名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">24.59%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:24.5865%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第8名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">20.80%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:20.8043%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第9名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">14.89%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:14.8925%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第10名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">8.76%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:8.7635%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">DOU5</h3>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第1名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-gold" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第2名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.02%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-silver" style="width:0.0176%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第3名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.25%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-bronze" style="width:0.2532%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第4名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">1.11%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-green" style="width:1.115%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第5名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">3.47%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:3.4653000000000005%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第6名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">12.31%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:12.3126%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第7名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">19.32%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:19.3217%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第8名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">22.61%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:22.615%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第9名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">22.23%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:22.2272%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第10名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">18.67%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:18.6724%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">GW</h3>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第1名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-gold" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第2名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">17次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-silver" style="width:0.0017%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第3名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.04%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-bronze" style="width:0.045%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第4名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.38%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-green" style="width:0.3764%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第5名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">1.42%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:1.4168%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第6名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">7.25%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:7.2504%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第7名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">14.85%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:14.854899999999999%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第8名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">21.91%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:21.9101%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第9名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">26.19%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:26.1857%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第10名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">27.96%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:27.959%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="text-align: center; margin-bottom: 15px; color: #667eea;">TE</h3>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第1名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-gold" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第2名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-silver" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第3名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-bronze" style="width:0.0%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第4名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">27次/1M</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-green" style="width:0.0026999999999999997%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第5名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">0.13%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:0.13090000000000002%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第6名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">2.60%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-sky" style="width:2.6010999999999997%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第7名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">9.08%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:9.0779%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第8名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">17.50%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-purple" style="width:17.5001%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第9名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">28.50%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:28.4995%"></div>
+                        </div>
+                    </div>
+                    <div style="margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.9em;">第10名</span>
+                            <span class="prob-value" style="font-size: 0.9em;">42.19%</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-red" style="width:42.187799999999996%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🎯 预测摘要</h2>
+            <div class="summary-grid">
+                <div class="summary-card" style="grid-column: 1 / -1; text-align: center; padding: 30px;">
+                    <h3 style="color: #333; margin-bottom: 20px;">📊 晋级分数线预测</h3>
+                    <div style="display: flex; justify-content: center; gap: 60px; flex-wrap: wrap;">
+                        <div style="color: #333;">
+                            <div style="font-size: 1.2em; opacity: 0.7;">胜者组</div>
+                            <div style="font-size: 3.5em; font-weight: 800; color: #4CAF50;">9.81<span style="font-size: 0.5em;">胜</span></div>
+                        </div>
+                        <div style="color: #333;">
+                            <div style="font-size: 1.2em; opacity: 0.7;">附加组A</div>
+                            <div style="font-size: 3.5em; font-weight: 800; color: #FF9800;">8.12<span style="font-size: 0.5em;">胜</span></div>
+                        </div>
+                        <div style="color: #333;">
+                            <div style="font-size: 1.2em; opacity: 0.7;">附加组B</div>
+                            <div style="font-size: 3.5em; font-weight: 800; color: #2196F3;">6.65<span style="font-size: 0.5em;">胜</span></div>
+                        </div>
+                    </div>
+                    <div style="color: #666; margin-top: 20px; font-size: 0.9em;">
+                        * 分数线 = 相邻名次队伍胜场数的平均值
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>GR</h3>
+                    <div style="font-size: 1.2em; margin-bottom: 5px;">当前胜场</div>
+                    <div class="value" style="font-size: 2.5em;">10</div>
+                    <div style="margin-top: 10px; opacity: 0.9;">
+                        平均位次: <strong>1.45</strong><br>
+                        最可能名次: <strong>第1名</strong>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>FPX.ZQ</h3>
+                    <div style="font-size: 1.2em; margin-bottom: 5px;">当前胜场</div>
+                    <div class="value" style="font-size: 2.5em;">9</div>
+                    <div style="margin-top: 10px; opacity: 0.9;">
+                        平均位次: <strong>2.38</strong><br>
+                        最可能名次: <strong>第2名</strong>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>WBG</h3>
+                    <div style="font-size: 1.2em; margin-bottom: 5px;">当前胜场</div>
+                    <div class="value" style="font-size: 2.5em;">8</div>
+                    <div style="margin-top: 10px; opacity: 0.9;">
+                        平均位次: <strong>3.39</strong><br>
+                        最可能名次: <strong>第3名</strong>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>MRC</h3>
+                    <div style="font-size: 1.2em; margin-bottom: 5px;">当前胜场</div>
+                    <div class="value" style="font-size: 2.5em;">8</div>
+                    <div style="margin-top: 10px; opacity: 0.9;">
+                        平均位次: <strong>4.11</strong><br>
+                        最可能名次: <strong>第4名</strong>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>GG</h3>
+                    <div style="font-size: 1.2em; margin-bottom: 5px;">当前胜场</div>
+                    <div class="value" style="font-size: 2.5em;">8</div>
+                    <div style="margin-top: 10px; opacity: 0.9;">
+                        平均位次: <strong>4.26</strong><br>
+                        最可能名次: <strong>第4名</strong>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>WOLVES</h3>
+                    <div style="font-size: 1.2em; margin-bottom: 5px;">当前胜场</div>
+                    <div class="value" style="font-size: 2.5em;">5</div>
+                    <div style="margin-top: 10px; opacity: 0.9;">
+                        平均位次: <strong>6.65</strong><br>
+                        最可能名次: <strong>第6名</strong>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>ACT</h3>
+                    <div style="font-size: 1.2em; margin-bottom: 5px;">当前胜场</div>
+                    <div class="value" style="font-size: 2.5em;">5</div>
+                    <div style="margin-top: 10px; opacity: 0.9;">
+                        平均位次: <strong>7.32</strong><br>
+                        最可能名次: <strong>第7名</strong>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>DOU5</h3>
+                    <div style="font-size: 1.2em; margin-bottom: 5px;">当前胜场</div>
+                    <div class="value" style="font-size: 2.5em;">4</div>
+                    <div style="margin-top: 10px; opacity: 0.9;">
+                        平均位次: <strong>7.99</strong><br>
+                        最可能名次: <strong>第8名</strong>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>GW</h3>
+                    <div style="font-size: 1.2em; margin-bottom: 5px;">当前胜场</div>
+                    <div class="value" style="font-size: 2.5em;">4</div>
+                    <div style="margin-top: 10px; opacity: 0.9;">
+                        平均位次: <strong>8.47</strong><br>
+                        最可能名次: <strong>第10名</strong>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <h3>TE</h3>
+                    <div style="font-size: 1.2em; margin-bottom: 5px;">当前胜场</div>
+                    <div class="value" style="font-size: 2.5em;">4</div>
+                    <div style="margin-top: 10px; opacity: 0.9;">
+                        平均位次: <strong>8.98</strong><br>
+                        最可能名次: <strong>第10名</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
