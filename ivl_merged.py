@@ -1,8 +1,9 @@
 from random import *
 import math
-from collections import OrderedDict
 import argparse
 import time
+
+FACTORIALS = [1, 1, 2, 6, 24, 120]
 
 teams = ("act", "dou5", "fpx.zq", "gg", "gr", "mrc", "te", "wbg", "wolves", "gw")
 
@@ -142,19 +143,22 @@ def get_prob(mA, mB):
     def p_pois(m, k):
         if m == 0:
             return 1.0 if k == 0 else 0.0
-        return m ** k * math.exp(-m) / math.factorial(k)
+        return m ** k * math.exp(-m) / FACTORIALS[k]
 
-    raw = []
+    raw = [0.0] * 5
     s_raw = 0.0
-    for pA, pB in scores:
+    for i, (pA, pB) in enumerate(scores):
         p = p_pois(mA, pA) * p_pois(mB, pB)
-        raw.append(p)
+        raw[i] = p
         s_raw += p
 
-    res = []
-    for i, (pA, pB) in enumerate(scores):
-        res.append(raw[i] / s_raw if s_raw > 0 else 1 / len(scores))
-    return res
+    if s_raw > 0:
+        for i in range(5):
+            raw[i] /= s_raw
+    else:
+        for i in range(5):
+            raw[i] = 0.2
+    return raw
 
 
 def sim_round(p1, p2):
@@ -244,14 +248,15 @@ def sim_bo3(statA, statB):
     return res
 
 
-def ran_sel(res):
+def ran_sel(res_flat):
     r = random()
-    for i in range(2):
-        for j in range(5):
-            for k in range(7):
-                r -= res[i][j][k]
-                if r < 0:
-                    return i, j, k
+    for idx, p in enumerate(res_flat):
+        r -= p
+        if r < 0:
+            i = idx // 35
+            j = (idx % 35) // 7
+            k = idx % 7
+            return i, j, k
 
 
 team_index = {t: i for i, t in enumerate(teams)}
@@ -262,13 +267,25 @@ for t1, t2 in remaining_matches:
     i = team_index[t1]
     j = team_index[t2]
     if i < j:
-        resall[i][j] = sim_bo3(stats[t1], stats[t2])
+        res = sim_bo3(stats[t1], stats[t2])
+        flat = []
+        for ii in range(2):
+            for jj in range(5):
+                for kk in range(7):
+                    flat.append(res[ii][jj][kk])
+        resall[i][j] = flat
     else:
-        resall[j][i] = sim_bo3(stats[t2], stats[t1])
+        res = sim_bo3(stats[t2], stats[t1])
+        flat = []
+        for ii in range(2):
+            for jj in range(5):
+                for kk in range(7):
+                    flat.append(res[ii][jj][kk])
+        resall[j][i] = flat
 
 
 def one_test():
-    new_score = {k: v[:] for k, v in now_score.items()}
+    new_score = [list(now_score[t]) for t in teams]
     for t1, t2 in remaining_matches:
         i = team_index[t1]
         j = team_index[t2]
@@ -281,29 +298,19 @@ def one_test():
         nw -= 2
         dc -= 3
         
-        a, b, c, d = new_score[t1]
-        e, f, g, h = new_score[t2]
-        
         if winner == 1:
-            a += 1
-            f += 1
+            new_score[i][0] += 1
+            new_score[j][1] += 1
         else:
-            b += 1
-            e += 1
-        c += nw
-        g -= nw
-        d += dc
-        h -= dc
-        
-        new_score[t1] = a, b, c, d
-        new_score[t2] = e, f, g, h
+            new_score[i][1] += 1
+            new_score[j][0] += 1
+        new_score[i][2] += nw
+        new_score[j][2] -= nw
+        new_score[i][3] += dc
+        new_score[j][3] -= dc
 
-    sorted_score = OrderedDict(
-        sorted(
-            new_score.items(),
-            key=lambda x: (-x[1][0], -x[1][2], -x[1][3])
-        ))
-    return sorted_score
+    ranked = sorted(range(10), key=lambda x: (-new_score[x][0], -new_score[x][2], -new_score[x][3]))
+    return ranked, new_score
 
 
 SIMULATION_COUNT = args.sim
@@ -318,20 +325,17 @@ playoff_a_line_sum = 0.0
 playoff_b_line_sum = 0.0
 
 for _ in range(SIMULATION_COUNT):
-    sorted_score = one_test()
-    sorted_teams = list(sorted_score.keys())
-    sorted_scores = list(sorted_score.values())
+    ranked, new_score = one_test()
     
-    for i, t in enumerate(teams):
-        pos = sorted_teams.index(t)
-        all_res[i][pos] += 1
+    for pos, idx in enumerate(ranked):
+        all_res[idx][pos] += 1
     
-    rank4_score = sorted_scores[3][0]
-    rank5_score = sorted_scores[4][0]
-    rank6_score = sorted_scores[5][0]
-    rank7_score = sorted_scores[6][0]
-    rank8_score = sorted_scores[7][0]
-    rank9_score = sorted_scores[8][0]
+    rank4_score = new_score[ranked[3]][0]
+    rank5_score = new_score[ranked[4]][0]
+    rank6_score = new_score[ranked[5]][0]
+    rank7_score = new_score[ranked[6]][0]
+    rank8_score = new_score[ranked[7]][0]
+    rank9_score = new_score[ranked[8]][0]
     
     winner_line_sum += (rank4_score + rank5_score) / 2
     playoff_a_line_sum += (rank6_score + rank7_score) / 2
